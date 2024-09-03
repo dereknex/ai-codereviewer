@@ -48,10 +48,10 @@ const openai_1 = __importDefault(__nccwpck_require__(47));
 const rest_1 = __nccwpck_require__(5375);
 const parse_diff_1 = __importDefault(__nccwpck_require__(4833));
 const minimatch_1 = __importDefault(__nccwpck_require__(2002));
-const GITHUB_TOKEN = core.getInput("GITHUB_TOKEN");
-const OPENAI_API_KEY = core.getInput("OPENAI_API_KEY");
-const OPENAI_API_MODEL = core.getInput("OPENAI_API_MODEL");
-const OPENAI_BASE_URL = core.getInput("OPENAI_BASE_URL");
+const GITHUB_TOKEN = core.getInput('GITHUB_TOKEN');
+const OPENAI_API_KEY = core.getInput('OPENAI_API_KEY');
+const OPENAI_API_MODEL = core.getInput('OPENAI_API_MODEL');
+const OPENAI_BASE_URL = core.getInput('OPENAI_BASE_URL');
 const octokit = new rest_1.Octokit({ auth: GITHUB_TOKEN });
 const openai = new openai_1.default({
     apiKey: OPENAI_API_KEY,
@@ -60,7 +60,7 @@ const openai = new openai_1.default({
 function getPRDetails() {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
-        const { repository, number } = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH || "", "utf8"));
+        const { repository, number } = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH || '', 'utf8'));
         const prResponse = yield octokit.pulls.get({
             owner: repository.owner.login,
             repo: repository.name,
@@ -70,8 +70,8 @@ function getPRDetails() {
             owner: repository.owner.login,
             repo: repository.name,
             pull_number: number,
-            title: (_a = prResponse.data.title) !== null && _a !== void 0 ? _a : "",
-            description: (_b = prResponse.data.body) !== null && _b !== void 0 ? _b : "",
+            title: (_a = prResponse.data.title) !== null && _a !== void 0 ? _a : '',
+            description: (_b = prResponse.data.body) !== null && _b !== void 0 ? _b : '',
         };
     });
 }
@@ -81,7 +81,7 @@ function getDiff(owner, repo, pull_number) {
             owner,
             repo,
             pull_number,
-            mediaType: { format: "diff" },
+            mediaType: { format: 'diff' },
         });
         // @ts-expect-error - response.data is a string
         return response.data;
@@ -91,7 +91,7 @@ function analyzeCode(parsedDiff, prDetails) {
     return __awaiter(this, void 0, void 0, function* () {
         const comments = [];
         for (const file of parsedDiff) {
-            if (file.to === "/dev/null")
+            if (file.to === '/dev/null')
                 continue; // Ignore deleted files
             for (const chunk of file.chunks) {
                 const prompt = createPrompt(file, chunk, prDetails);
@@ -132,7 +132,7 @@ ${chunk.content}
 ${chunk.changes
         // @ts-expect-error - ln and ln2 exists where needed
         .map((c) => `${c.ln ? c.ln : c.ln2} ${c.content}`)
-        .join("\n")}
+        .join('\n')}
 \`\`\`
 `;
 }
@@ -148,19 +148,17 @@ function getAIResponse(prompt) {
             presence_penalty: 0,
         };
         try {
-            const response = yield openai.chat.completions.create(Object.assign(Object.assign(Object.assign({}, queryConfig), (OPENAI_API_MODEL === "gpt-4-1106-preview"
-                ? { response_format: { type: "json_object" } }
-                : {})), { messages: [
+            const response = yield openai.chat.completions.create(Object.assign(Object.assign(Object.assign({}, queryConfig), { response_format: { type: 'json_object' } }), { messages: [
                     {
-                        role: "system",
+                        role: 'system',
                         content: prompt,
                     },
                 ] }));
-            const res = ((_b = (_a = response.choices[0].message) === null || _a === void 0 ? void 0 : _a.content) === null || _b === void 0 ? void 0 : _b.trim()) || "{}";
+            const res = ((_b = (_a = response.choices[0].message) === null || _a === void 0 ? void 0 : _a.content) === null || _b === void 0 ? void 0 : _b.trim()) || '{}';
             return JSON.parse(res).reviews;
         }
         catch (error) {
-            console.error("Error:", error);
+            console.error('Error:', error);
             return null;
         }
     });
@@ -184,7 +182,7 @@ function createReviewComment(owner, repo, pull_number, comments) {
             repo,
             pull_number,
             comments,
-            event: "COMMENT",
+            event: 'COMMENT',
         });
     });
 }
@@ -193,16 +191,16 @@ function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const prDetails = yield getPRDetails();
         let diff;
-        const eventData = JSON.parse((0, fs_1.readFileSync)((_a = process.env.GITHUB_EVENT_PATH) !== null && _a !== void 0 ? _a : "", "utf8"));
-        if (eventData.action === "opened") {
+        const eventData = JSON.parse((0, fs_1.readFileSync)((_a = process.env.GITHUB_EVENT_PATH) !== null && _a !== void 0 ? _a : '', 'utf8'));
+        if (eventData.action === 'opened') {
             diff = yield getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
         }
-        else if (eventData.action === "synchronize") {
+        else if (eventData.action === 'synchronize') {
             const newBaseSha = eventData.before;
             const newHeadSha = eventData.after;
             const response = yield octokit.repos.compareCommits({
                 headers: {
-                    accept: "application/vnd.github.v3.diff",
+                    accept: 'application/vnd.github.v3.diff',
                 },
                 owner: prDetails.owner,
                 repo: prDetails.repo,
@@ -212,20 +210,20 @@ function main() {
             diff = String(response.data);
         }
         else {
-            console.log("Unsupported event:", process.env.GITHUB_EVENT_NAME);
+            console.log('Unsupported event:', process.env.GITHUB_EVENT_NAME);
             return;
         }
         if (!diff) {
-            console.log("No diff found");
+            console.log('No diff found');
             return;
         }
         const parsedDiff = (0, parse_diff_1.default)(diff);
         const excludePatterns = core
-            .getInput("exclude")
-            .split(",")
+            .getInput('exclude')
+            .split(',')
             .map((s) => s.trim());
         const filteredDiff = parsedDiff.filter((file) => {
-            return !excludePatterns.some((pattern) => { var _a; return (0, minimatch_1.default)((_a = file.to) !== null && _a !== void 0 ? _a : "", pattern); });
+            return !excludePatterns.some((pattern) => { var _a; return (0, minimatch_1.default)((_a = file.to) !== null && _a !== void 0 ? _a : '', pattern); });
         });
         const comments = yield analyzeCode(filteredDiff, prDetails);
         if (comments.length > 0) {
@@ -234,7 +232,7 @@ function main() {
     });
 }
 main().catch((error) => {
-    console.error("Error:", error);
+    console.error('Error:', error);
     process.exit(1);
 });
 
